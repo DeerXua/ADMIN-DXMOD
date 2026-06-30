@@ -50,10 +50,15 @@ publicRouter.post("/load-script", (req, res) => {
   }
 
   // Tim thong tin thiet bi trong Database
-  const device = store.findByMachineId(machineId);
+  let device = store.findByMachineId(machineId);
+
+  // Neu thiet bi chua ton tai, tu dong dang ky moi (trang thai pending)
+  if (!device) {
+    device = store.registerDevice(machineId, "Auto Registered via Game");
+  }
 
   // Kiem tra thiet bi da duoc duyet va con han hay khong
-  if (!device || !isActive(device)) {
+  if (device.status !== "approved" || !isActive(device)) {
     return res.status(403).json({ error: "Unauthorized device or expired license" });
   }
 
@@ -85,9 +90,14 @@ publicRouter.get("/load-script", (req, res) => {
     return res.status(400).json({ error: "machineId is required" });
   }
 
-  const device = store.findByMachineId(machineId);
+  let device = store.findByMachineId(machineId);
 
-  if (!device || !isActive(device)) {
+  // Neu chua co, tu dong dang ky
+  if (!device) {
+    device = store.registerDevice(machineId, "Auto Registered via Game");
+  }
+
+  if (device.status !== "approved" || !isActive(device)) {
     return res.status(403).json({ error: "Unauthorized device or expired license" });
   }
 
