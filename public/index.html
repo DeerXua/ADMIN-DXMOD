@@ -3,46 +3,81 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ADMIN-DXMOD</title>
+    <title>ADMIN-DXMOD | Premium Management Console</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <main class="shell">
+      <!-- Topbar Section -->
       <section class="topbar">
         <div>
           <h1>ADMIN-DXMOD</h1>
-          <p>Quản lý thiết bị, trạng thái duyệt và thời hạn license.</p>
+          <p>Bảng điều khiển quản lý Game ID, cấp duyệt và theo dõi trạng thái giấy phép hoạt động.</p>
         </div>
         <div class="token-box">
-          <input id="token" type="password" placeholder="Admin token" autocomplete="off" />
-          <button id="saveToken">Lưu</button>
+          <input id="token" type="password" placeholder="Nhập Admin Token..." autocomplete="off" />
+          <button id="saveToken">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Lưu Token
+          </button>
         </div>
       </section>
 
-      <section class="toolbar">
-        <select id="filter">
-          <option value="">Tất cả</option>
-          <option value="pending">Chờ duyệt</option>
-          <option value="approved">Đã duyệt</option>
-          <option value="blocked">Đã chặn</option>
-        </select>
-        <button id="refresh">Tải lại</button>
+      <!-- Stats Grid Section -->
+      <section class="stats-container">
+        <div class="stat-card">
+          <span class="label">Tổng Game ID</span>
+          <span class="value" id="stat-total">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="label">Chờ kích hoạt</span>
+          <span class="value" id="stat-pending" style="color: #f39c12;">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="label">Đang hoạt động</span>
+          <span class="value" id="stat-approved" style="color: #2ecc71;">0</span>
+        </div>
       </section>
 
+      <!-- Toolbar Section -->
+      <section class="toolbar">
+        <div class="toolbar-left">
+          <select id="filter">
+            <option value="">Bộ lọc: Tất cả</option>
+            <option value="pending">Bộ lọc: Chờ duyệt</option>
+            <option value="approved">Bộ lọc: Đã duyệt</option>
+            <option value="blocked">Bộ lọc: Đã chặn</option>
+          </select>
+        </div>
+        <div class="toolbar-right">
+          <button id="refresh" class="secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+            Tải Lại
+          </button>
+        </div>
+      </section>
+
+      <!-- Data Table Panel Section -->
       <section class="panel">
-        <table>
-          <thead>
-            <tr>
-              <th>Game ID</th>
-              <th>Nhãn</th>
-              <th>Trạng thái</th>
-              <th>Hết hạn</th>
-              <th>Lần cuối</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody id="devices"></tbody>
-        </table>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Game ID</th>
+                <th>Tên nhãn</th>
+                <th>Trạng thái</th>
+                <th>Thời gian hết hạn</th>
+                <th>Hoạt động cuối</th>
+                <th>Thao tác quản trị</th>
+              </tr>
+            </thead>
+            <tbody id="devices">
+              <tr>
+                <td colspan="6" class="empty">Đang tải danh sách thiết bị...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
 
