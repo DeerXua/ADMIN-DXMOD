@@ -10,8 +10,8 @@ const __dirname = path.dirname(__filename);
 // Khóa XOR bí mật (trùng khớp với khóa trong game stub)
 const XOR_KEY = "DX_SECRET_KEY_2026_@#$";
 
-// Duong dan den protected_script.lua
-const SCRIPT_PATH = path.join(__dirname, "..", "..", "protected_script.lua");
+// Duong dan den protected_script.lua (trong thu muc ADMIN-DXMOD)
+const SCRIPT_PATH = path.join(__dirname, "..", "protected_script.lua");
 
 export const publicRouter = express.Router();
 
