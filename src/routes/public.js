@@ -25,20 +25,35 @@ function encryptXOR(plaintext) {
 
 // ================================================================
 // ENDPOINT: POST /api/load-script
-// Phuc vu noi dung protected_script.lua cho game client
-// Game stub se goi POST den day de tai mod code ve chay
+// Phuc vu noi dung protected_script.lua cho game client co ban quyen
 // ================================================================
 publicRouter.post("/load-script", (req, res) => {
+  const machineId = normalizeMachineId(req.body.machineId || req.headers["x-machine-id"]);
+
+  if (!machineId) {
+    return res.status(400).json({ error: "machineId is required" });
+  }
+
+  // Tim thong tin thiet bi trong Database
+  const device = store.findByMachineId(machineId);
+
+  // Kiem tra thiet bi da duoc duyet va con han hay khong
+  if (!device || !isActive(device)) {
+    return res.status(403).json({ error: "Unauthorized device or expired license" });
+  }
+
   if (!fs.existsSync(SCRIPT_PATH)) {
     return res.status(404).json({ error: "Script not found on server" });
   }
+
+  // Cap nhat thoi gian tuong tac cuoi cua thiet bi
+  store.touchDevice(machineId);
 
   fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
     if (err) {
       return res.status(500).json({ error: "Failed to read script" });
     }
     
-    // Ma hoa noi dung va gui di
     const encryptedData = encryptXOR(data);
     
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -47,11 +62,25 @@ publicRouter.post("/load-script", (req, res) => {
   });
 });
 
-// ENDPOINT: GET /api/load-script (ho tro ca GET de test)
+// ENDPOINT: GET /api/load-script (Ho tro truyen machineId qua query param de test)
 publicRouter.get("/load-script", (req, res) => {
+  const machineId = normalizeMachineId(req.query.machineId);
+
+  if (!machineId) {
+    return res.status(400).json({ error: "machineId is required" });
+  }
+
+  const device = store.findByMachineId(machineId);
+
+  if (!device || !isActive(device)) {
+    return res.status(403).json({ error: "Unauthorized device or expired license" });
+  }
+
   if (!fs.existsSync(SCRIPT_PATH)) {
     return res.status(404).json({ error: "Script not found on server" });
   }
+
+  store.touchDevice(machineId);
 
   fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
     if (err) {
