@@ -10,6 +10,21 @@ const __dirname = path.dirname(__filename);
 // Khóa XOR bí mật (trùng khớp với khóa trong game stub)
 const XOR_KEY = "DX_SECRET_KEY_2026_@#$";
 
+// Duong dan den protected_script.lua
+const SCRIPT_PATH = path.join(__dirname, "..", "..", "protected_script.lua");
+
+export const publicRouter = express.Router();
+
+function normalizeMachineId(value) {
+  return String(value || "").trim();
+}
+
+function isActive(row) {
+  if (!row || row.status !== "approved") return false;
+  if (!row.expires_at) return true;
+  return new Date(row.expires_at).getTime() > Date.now();
+}
+
 function encryptXOR(plaintext) {
   const data = Buffer.from(plaintext, "utf8");
   const key = Buffer.from(XOR_KEY, "utf8");
