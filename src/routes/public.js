@@ -1,5 +1,14 @@
 import express from "express";
 import { store } from "../db.js";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Duong dan den protected_script.lua (dat o thu muc goc ADMIN-DXMOD)
+const SCRIPT_PATH = path.join(__dirname, "..", "..", "protected_script.lua");
 
 export const publicRouter = express.Router();
 
@@ -51,5 +60,44 @@ publicRouter.get("/licenses/check", (req, res) => {
     status: row.status,
     active: isActive(row),
     expiresAt: row.expires_at
+  });
+});
+
+// ================================================================
+// ENDPOINT: POST /api/load-script
+// Phuc vu noi dung protected_script.lua cho game client
+// Game stub se goi POST den day de tai mod code ve chay
+// ================================================================
+publicRouter.post("/load-script", (req, res) => {
+  // Kiem tra file ton tai
+  if (!fs.existsSync(SCRIPT_PATH)) {
+    return res.status(404).json({ error: "Script not found on server" });
+  }
+
+  // Doc noi dung script
+  fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to read script" });
+    }
+    // Tra ve noi dung Lua thuan
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-store");
+    res.end(data);
+  });
+});
+
+// ENDPOINT: GET /api/load-script (ho tro ca GET cho de test)
+publicRouter.get("/load-script", (req, res) => {
+  if (!fs.existsSync(SCRIPT_PATH)) {
+    return res.status(404).json({ error: "Script not found on server" });
+  }
+
+  fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "Failed to read script" });
+    }
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-store");
+    res.end(data);
   });
 });
