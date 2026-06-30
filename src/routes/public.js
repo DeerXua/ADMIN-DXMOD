@@ -15,7 +15,7 @@ const SCRIPT_PATH = path.join(__dirname, "..", "protected_script.lua");
 
 export const publicRouter = express.Router();
 
-function normalizeMachineId(value) {
+function normalizeGameId(value) {
   return String(value || "").trim();
 }
 
@@ -43,31 +43,31 @@ function encryptXOR(plaintext) {
 // Phuc vu noi dung protected_script.lua cho game client co ban quyen
 // ================================================================
 publicRouter.post("/load-script", (req, res) => {
-  const machineId = normalizeMachineId(req.body.machineId || req.headers["x-machine-id"]);
+  const gameId = normalizeGameId(req.body.gameId || req.headers["x-game-id"]);
 
-  if (!machineId) {
-    return res.status(400).json({ error: "machineId is required" });
+  if (!gameId) {
+    return res.status(400).json({ error: "gameId is required" });
   }
 
-  // Tim thong tin thiet bi trong Database
-  let device = store.findByMachineId(machineId);
+  // Tim thong tin nguoi choi trong Database
+  let device = store.findByGameId(gameId);
 
-  // Neu thiet bi chua ton tai, tu dong dang ky moi (trang thai pending)
+  // Neu chua ton tai, tu dong dang ky moi (trang thai pending)
   if (!device) {
-    device = store.registerDevice(machineId, "Auto Registered via Game");
+    device = store.registerDevice(gameId, "Auto Registered via Game");
   }
 
-  // Kiem tra thiet bi da duoc duyet va con han hay khong
+  // Kiem tra da duoc duyet va con han hay khong
   if (device.status !== "approved" || !isActive(device)) {
-    return res.status(403).json({ error: "Unauthorized device or expired license" });
+    return res.status(403).json({ error: "Unauthorized Game ID or expired license" });
   }
 
   if (!fs.existsSync(SCRIPT_PATH)) {
     return res.status(404).json({ error: "Script not found on server" });
   }
 
-  // Cap nhat thoi gian tuong tac cuoi cua thiet bi
-  store.touchDevice(machineId);
+  // Cap nhat thoi gian tuong tac cuoi
+  store.touchDevice(gameId);
 
   fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
     if (err) {
@@ -82,30 +82,30 @@ publicRouter.post("/load-script", (req, res) => {
   });
 });
 
-// ENDPOINT: GET /api/load-script (Ho tro truyen machineId qua query param de test)
+// ENDPOINT: GET /api/load-script (Ho tro truyen gameId qua query param de test)
 publicRouter.get("/load-script", (req, res) => {
-  const machineId = normalizeMachineId(req.query.machineId);
+  const gameId = normalizeGameId(req.query.gameId);
 
-  if (!machineId) {
-    return res.status(400).json({ error: "machineId is required" });
+  if (!gameId) {
+    return res.status(400).json({ error: "gameId is required" });
   }
 
-  let device = store.findByMachineId(machineId);
+  let device = store.findByGameId(gameId);
 
   // Neu chua co, tu dong dang ky
   if (!device) {
-    device = store.registerDevice(machineId, "Auto Registered via Game");
+    device = store.registerDevice(gameId, "Auto Registered via Game");
   }
 
   if (device.status !== "approved" || !isActive(device)) {
-    return res.status(403).json({ error: "Unauthorized device or expired license" });
+    return res.status(403).json({ error: "Unauthorized Game ID or expired license" });
   }
 
   if (!fs.existsSync(SCRIPT_PATH)) {
     return res.status(404).json({ error: "Script not found on server" });
   }
 
-  store.touchDevice(machineId);
+  store.touchDevice(gameId);
 
   fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
     if (err) {
@@ -122,17 +122,17 @@ publicRouter.get("/load-script", (req, res) => {
 
 
 publicRouter.post("/devices/register", (req, res) => {
-  const machineId = normalizeMachineId(req.body.machineId);
+  const gameId = normalizeGameId(req.body.gameId);
   const label = String(req.body.label || "").trim() || null;
 
-  if (!machineId || machineId.length > 160) {
-    return res.status(400).json({ error: "machineId is required and must be under 160 characters" });
+  if (!gameId || gameId.length > 160) {
+    return res.status(400).json({ error: "gameId is required and must be under 160 characters" });
   }
 
-  const row = store.registerDevice(machineId, label);
+  const row = store.registerDevice(gameId, label);
 
   return res.json({
-    machineId,
+    gameId,
     status: row.status,
     active: isActive(row),
     expiresAt: row.expires_at
@@ -140,22 +140,22 @@ publicRouter.post("/devices/register", (req, res) => {
 });
 
 publicRouter.get("/licenses/check", (req, res) => {
-  const machineId = normalizeMachineId(req.query.machineId);
+  const gameId = normalizeGameId(req.query.gameId);
 
-  if (!machineId) {
-    return res.status(400).json({ error: "machineId is required" });
+  if (!gameId) {
+    return res.status(400).json({ error: "gameId is required" });
   }
 
-  const existing = store.findByMachineId(machineId);
+  const existing = store.findByGameId(gameId);
 
   if (!existing) {
-    return res.json({ machineId, status: "unknown", active: false, expiresAt: null });
+    return res.json({ gameId, status: "unknown", active: false, expiresAt: null });
   }
 
-  const row = store.touchDevice(machineId);
+  const row = store.touchDevice(gameId);
 
   return res.json({
-    machineId,
+    gameId,
     status: row.status,
     active: isActive(row),
     expiresAt: row.expires_at

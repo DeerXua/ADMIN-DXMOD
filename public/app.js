@@ -71,7 +71,7 @@ function renderDevices(devices) {
   for (const device of devices) {
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td class="machine" title="${device.machineId}">${device.machineId}</td>
+      <td class="machine" title="${device.gameId}">${device.gameId}</td>
       <td>${device.label || ""}</td>
       <td><span class="badge ${device.status}">${device.status}</span></td>
       <td>${formatDate(device.expiresAt)}</td>

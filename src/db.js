@@ -33,15 +33,15 @@ export const store = {
     return state.devices.find((device) => device.id === id) || null;
   },
 
-  findByMachineId(machineId) {
+  findByGameId(gameId) {
     const state = readState();
-    return state.devices.find((device) => device.machine_id === machineId) || null;
+    return state.devices.find((device) => device.game_id === gameId) || null;
   },
 
-  registerDevice(machineId, label) {
+  registerDevice(gameId, label) {
     const state = readState();
     const timestamp = nowIso();
-    let device = state.devices.find((item) => item.machine_id === machineId);
+    let device = state.devices.find((item) => item.game_id === gameId);
 
     if (device) {
       if (label) device.label = label;
@@ -50,7 +50,7 @@ export const store = {
     } else {
       device = {
         id: state.nextId,
-        machine_id: machineId,
+        game_id: gameId,
         label,
         status: "pending",
         expires_at: null,
@@ -68,9 +68,9 @@ export const store = {
     return device;
   },
 
-  touchDevice(machineId) {
+  touchDevice(gameId) {
     const state = readState();
-    const device = state.devices.find((item) => item.machine_id === machineId);
+    const device = state.devices.find((item) => item.game_id === gameId);
     if (!device) return null;
 
     const timestamp = nowIso();
@@ -110,7 +110,7 @@ export function publicDevice(row) {
   if (!row) return null;
   return {
     id: row.id,
-    machineId: row.machine_id,
+    gameId: row.game_id,
     label: row.label,
     status: row.status,
     expiresAt: row.expires_at,
