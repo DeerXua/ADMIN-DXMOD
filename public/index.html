@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ADMIN-DXMOD</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <h1>ADMIN-DXMOD</h1>
+          <p>Quản lý thiết bị, trạng thái duyệt và thời hạn license.</p>
+        </div>
+        <div class="token-box">
+          <input id="token" type="password" placeholder="Admin token" autocomplete="off" />
+          <button id="saveToken">Lưu</button>
+        </div>
+      </section>
+
+      <section class="toolbar">
+        <select id="filter">
+          <option value="">Tất cả</option>
+          <option value="pending">Chờ duyệt</option>
+          <option value="approved">Đã duyệt</option>
+          <option value="blocked">Đã chặn</option>
+        </select>
+        <button id="refresh">Tải lại</button>
+      </section>
+
+      <section class="panel">
+        <table>
+          <thead>
+            <tr>
+              <th>ID máy</th>
+              <th>Nhãn</th>
+              <th>Trạng thái</th>
+              <th>Hết hạn</th>
+              <th>Lần cuối</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="devices"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
