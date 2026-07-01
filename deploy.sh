@@ -5,7 +5,7 @@
 #  - KHÔNG đụng tới bất kỳ project/process nào đang chạy
 #  - KHÔNG dùng pm2 delete/stop/kill trên process khác
 #  - KHÔNG thay đổi firewall rules hiện có
-#  - Chạy DXMOD trên port 4000 (tránh xung đột)
+#  - Chạy DXMOD trên port 5000
 # =============================================================
 
 set -e
@@ -13,7 +13,7 @@ set -e
 VPS_DIR="/opt/dxmod"
 REPO="https://github.com/DeerXua/ADMIN-DXMOD.git"
 SERVICE="dxmod"            # PM2 app name riêng biệt
-DXMOD_PORT=4000            # Port riêng - KHÔNG xung đột
+DXMOD_PORT=5000            # Port mặc định
 
 echo ""
 echo "╔══════════════════════════════════════╗"
@@ -24,13 +24,6 @@ echo "⚠️  Chỉ cài vào: $VPS_DIR"
 echo "⚠️  Port sử dụng: $DXMOD_PORT"
 echo "⚠️  KHÔNG đụng tới project/process khác"
 echo ""
-
-# ---- Kiểm tra xem port 4000 có đang bị chiếm không ----
-if ss -tlnp 2>/dev/null | grep -q ":${DXMOD_PORT}" || netstat -tlnp 2>/dev/null | grep -q ":${DXMOD_PORT}"; then
-    echo "⚠️  WARNING: Port $DXMOD_PORT đang được dùng bởi process khác."
-    echo "   Nếu đó là lần chạy trước của DXMOD, pm2 restart sẽ xử lý."
-    echo "   Nếu là project khác → sửa DXMOD_PORT ở đầu script."
-fi
 
 # 1. Cài Node.js 20 (chỉ nếu chưa có — KHÔNG ghi đè version hiện tại nếu đã đủ)
 echo "[1/6] Checking Node.js..."
@@ -77,7 +70,7 @@ fi
 
 cd "$VPS_DIR"
 
-# 5. Tạo .env cho DXMOD (chỉ nếu chưa có — không ghi đè file đã tồn tại)
+# 5. Tạo/cập nhật .env cho DXMOD
 echo "[5/6] Checking .env..."
 if [ ! -f "$VPS_DIR/.env" ]; then
     cat > "$VPS_DIR/.env" << ENVEOF
@@ -93,8 +86,9 @@ RATE_LIMIT_MAX=15
 ENVEOF
     echo "  ✓ .env created (port $DXMOD_PORT)"
 else
-    echo "  ✓ .env already exists — KHÔNG ghi đè (giữ nguyên cấu hình)"
-    echo "  ℹ  Nếu muốn đổi port: nano $VPS_DIR/.env"
+    # Đảm bảo PORT luôn đúng dù .env đã tồn tại
+    sed -i "s/^PORT=.*/PORT=${DXMOD_PORT}/" "$VPS_DIR/.env"
+    echo "  ✓ .env exists — đã đảm bảo PORT=${DXMOD_PORT}"
 fi
 
 # 6. Cài npm packages (chỉ production)
@@ -109,14 +103,12 @@ echo "[PM2] Managing DXMOD service only..."
 
 if pm2 describe "$SERVICE" &>/dev/null 2>&1; then
     echo "  → Restarting existing '$SERVICE' process..."
-    pm2 restart "$SERVICE"
+    pm2 restart "$SERVICE" --update-env
 else
     echo "  → Starting new '$SERVICE' process..."
     pm2 start src/server.js \
         --name "$SERVICE" \
-        --cwd "$VPS_DIR" \
-        --no-autorestart false \
-        -- 2>/dev/null
+        --cwd "$VPS_DIR"
 fi
 
 # Lưu PM2 process list (bao gồm cả processes khác đang có)
