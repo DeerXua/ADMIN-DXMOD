@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.set("trust proxy", true); // Bật trust proxy cho Nginx/Localtunnel/Cloudflare
+app.set("trust proxy", 1); // Tin tưởng 1 hop proxy (Nginx / Localtunnel)
 
 // Security headers (CSP disabled for our simple frontend)
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -34,6 +34,7 @@ app.use(rateLimit({
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false }, // Tắt kiểm tra trust proxy validation để tránh crash
   message: { error: "Too many requests" },
 }));
 

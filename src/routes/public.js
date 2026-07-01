@@ -25,6 +25,7 @@ const checkLimiter = rateLimit({
   max: 15,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false },
   message: { error: "Too many requests, please slow down" },
 });
 
