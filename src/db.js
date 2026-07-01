@@ -10,8 +10,16 @@ function readState() {
     return { nextId: 1, devices: [] };
   }
 
-  const raw = fs.readFileSync(config.dbPath, "utf8");
-  return JSON.parse(raw);
+  try {
+    const raw = fs.readFileSync(config.dbPath, "utf8").trim();
+    if (!raw) {
+      return { nextId: 1, devices: [] };
+    }
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("Failed to parse database file, resetting to empty state:", err);
+    return { nextId: 1, devices: [] };
+  }
 }
 
 function writeState(state) {
