@@ -3,83 +3,388 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ADMIN-DXMOD | Premium Management Console</title>
+    <title>DXMOD Admin — License Control Panel</title>
+    <meta name="description" content="Bảng điều khiển quản lý giấy phép VIP cho DXMOD. Thêm, sửa, xoá UID và theo dõi truy cập theo thời gian thực." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <!-- Topbar Section -->
-      <section class="topbar">
-        <div>
-          <h1>ADMIN-DXMOD</h1>
-          <p>Bảng điều khiển quản lý Game ID, cấp duyệt và theo dõi trạng thái giấy phép hoạt động.</p>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!--  LOGIN PAGE                                          -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="page-login" class="page active">
+      <div class="login-bg">
+        <div class="login-orb orb1"></div>
+        <div class="login-orb orb2"></div>
+        <div class="login-orb orb3"></div>
+      </div>
+      <div class="login-card glass">
+        <div class="login-logo">
+          <div class="logo-icon">⚡</div>
+          <h1>DXMOD Admin</h1>
+          <p>License Control Panel</p>
         </div>
-        <div class="token-box">
-          <input id="token" type="password" placeholder="Nhập Admin Token..." autocomplete="off" />
-          <button id="saveToken">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-            Lưu Token
+        <form id="login-form" autocomplete="off">
+          <div class="field-group">
+            <label for="input-username">Tên đăng nhập</label>
+            <input id="input-username" type="text" placeholder="admin" autocomplete="username" />
+          </div>
+          <div class="field-group">
+            <label for="input-password">Mật khẩu</label>
+            <input id="input-password" type="password" placeholder="••••••••••" autocomplete="current-password" />
+          </div>
+          <button id="btn-login" type="submit" class="btn btn-primary btn-full">
+            <span class="btn-text">Đăng Nhập</span>
+            <span class="btn-spinner hidden"></span>
           </button>
+          <p id="login-error" class="login-error hidden">Sai tên đăng nhập hoặc mật khẩu</p>
+        </form>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!--  DASHBOARD PAGE                                      -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="page-dashboard" class="page">
+
+      <!-- TOPBAR -->
+      <header class="topbar glass">
+        <div class="topbar-brand">
+          <span class="brand-icon">⚡</span>
+          <div>
+            <h1 class="brand-title">DXMOD</h1>
+            <span class="brand-sub">License Control Panel</span>
+          </div>
+        </div>
+        <nav class="topbar-nav">
+          <button id="tab-btn-users"  class="tab-btn active" data-tab="users">👥 UID Manager</button>
+          <button id="tab-btn-logs"   class="tab-btn"        data-tab="logs">📋 Access Logs</button>
+          <button id="tab-btn-api"    class="tab-btn"        data-tab="api">🔌 API Info</button>
+        </nav>
+        <div class="topbar-right">
+          <div class="user-chip">
+            <span class="user-avatar">A</span>
+            <span id="dash-username" class="user-name">admin</span>
+          </div>
+          <button id="btn-logout" class="btn btn-ghost btn-sm">Đăng xuất</button>
+        </div>
+      </header>
+
+      <!-- STATS -->
+      <section class="stats-row" id="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#38bdf8,#818cf8)">👥</div>
+          <div class="stat-body">
+            <span class="stat-label">Tổng UID</span>
+            <span class="stat-value" id="s-total">—</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#10b981,#059669)">✅</div>
+          <div class="stat-body">
+            <span class="stat-label">Đang hoạt động</span>
+            <span class="stat-value" id="s-active" style="color:#34d399">—</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)">⏳</div>
+          <div class="stat-body">
+            <span class="stat-label">Chờ duyệt</span>
+            <span class="stat-value" id="s-pending" style="color:#fbbf24">—</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626)">🚫</div>
+          <div class="stat-body">
+            <span class="stat-label">Bị chặn</span>
+            <span class="stat-value" id="s-blocked" style="color:#f87171">—</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">⚡</div>
+          <div class="stat-body">
+            <span class="stat-label">Truy cập hôm nay</span>
+            <span class="stat-value" id="s-today" style="color:#a78bfa">—</span>
+          </div>
         </div>
       </section>
 
-      <!-- Stats Grid Section -->
-      <section class="stats-container">
-        <div class="stat-card">
-          <span class="label">Tổng Game ID</span>
-          <span class="value" id="stat-total">0</span>
+      <!-- ─── TAB: USERS ─────────────────────────────────── -->
+      <section id="tab-users" class="tab-panel active">
+        <!-- Toolbar -->
+        <div class="toolbar glass">
+          <div class="toolbar-left">
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input id="search-uid" type="text" placeholder="Tìm kiếm UID hoặc nhãn..." class="search-input" />
+            </div>
+            <select id="filter-status" class="select-input">
+              <option value="">Tất cả trạng thái</option>
+              <option value="approved">Đã duyệt</option>
+              <option value="pending">Chờ duyệt</option>
+              <option value="blocked">Đã chặn</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <button id="btn-refresh" class="btn btn-ghost btn-sm">🔄 Làm mới</button>
+            <button id="btn-add-uid" class="btn btn-primary btn-sm">➕ Thêm UID</button>
+          </div>
         </div>
-        <div class="stat-card">
-          <span class="label">Chờ kích hoạt</span>
-          <span class="value" id="stat-pending" style="color: #f39c12;">0</span>
-        </div>
-        <div class="stat-card">
-          <span class="label">Đang hoạt động</span>
-          <span class="value" id="stat-approved" style="color: #2ecc71;">0</span>
+
+        <!-- Table -->
+        <div class="panel glass">
+          <div class="table-wrap">
+            <table id="uid-table">
+              <thead>
+                <tr>
+                  <th>Game UID</th>
+                  <th>Nhãn</th>
+                  <th>Trạng thái</th>
+                  <th>Hết hạn</th>
+                  <th>Hoạt động cuối</th>
+                  <th>Ghi chú</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="uid-tbody">
+                <tr><td colspan="7" class="empty-row">Đang tải...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="pagination"></div>
         </div>
       </section>
 
-      <!-- Toolbar Section -->
-      <section class="toolbar">
-        <div class="toolbar-left">
-          <select id="filter">
-            <option value="">Bộ lọc: Tất cả</option>
-            <option value="pending">Bộ lọc: Chờ duyệt</option>
-            <option value="approved">Bộ lọc: Đã duyệt</option>
-            <option value="blocked">Bộ lọc: Đã chặn</option>
-          </select>
+      <!-- ─── TAB: LOGS ──────────────────────────────────── -->
+      <section id="tab-logs" class="tab-panel">
+        <div class="toolbar glass">
+          <span class="section-label">📋 Nhật ký truy cập API gần đây (tối đa 50)</span>
+          <button id="btn-refresh-logs" class="btn btn-ghost btn-sm">🔄 Làm mới</button>
         </div>
-        <div class="toolbar-right">
-          <button id="refresh" class="secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
-            Tải Lại
-          </button>
+        <div class="panel glass">
+          <div class="table-wrap">
+            <table id="logs-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Thời gian</th>
+                  <th>Game UID</th>
+                  <th>IP</th>
+                  <th>Kết quả</th>
+                  <th>Phương thức</th>
+                </tr>
+              </thead>
+              <tbody id="logs-tbody">
+                <tr><td colspan="6" class="empty-row">Chưa có dữ liệu</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
-      <!-- Data Table Panel Section -->
-      <section class="panel">
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Game ID</th>
-                <th>Tên nhãn</th>
-                <th>Trạng thái</th>
-                <th>Thời gian hết hạn</th>
-                <th>Hoạt động cuối</th>
-                <th>Thao tác quản trị</th>
-              </tr>
-            </thead>
-            <tbody id="devices">
-              <tr>
-                <td colspan="6" class="empty">Đang tải danh sách thiết bị...</td>
-              </tr>
-            </tbody>
-          </table>
+      <!-- ─── TAB: API INFO ──────────────────────────────── -->
+      <section id="tab-api" class="tab-panel">
+        <div class="panel glass api-info-panel">
+          <h2>🔌 Thông tin tích hợp API</h2>
+
+          <div class="api-block">
+            <div class="api-title">POST <code>/api/check</code> — Kiểm tra giấy phép UID</div>
+            <div class="api-desc">Dùng trong file Lua để xác thực UID trước khi bật menu.</div>
+            <pre class="code-block"><code>-- Request body (JSON)
+{
+  "uid": "123456789",
+  "apiKey": "DX_API_KEY_2026"
+}
+
+-- Response (active)
+{
+  "status": "success",
+  "active": true,
+  "expire_time": "2027-01-01T00:00:00.000Z",
+  "message": "Kích hoạt thành công / Activated"
+}
+
+-- Response (inactive)
+{
+  "status": "error",
+  "active": false,
+  "expire_time": null,
+  "message": "UID chưa được kích hoạt / UID pending activation"
+}</code></pre>
+          </div>
+
+          <div class="api-block">
+            <div class="api-title">POST <code>/api/admin/login</code> — Đăng nhập admin</div>
+            <pre class="code-block"><code>-- Request
+{ "username": "admin", "password": "your_password" }
+
+-- Response
+{ "token": "eyJ...", "expiresIn": "24h", "username": "admin" }</code></pre>
+          </div>
+
+          <div class="api-block">
+            <div class="api-title">POST <code>/api/admin/users</code> — Thêm/cập nhật UID</div>
+            <pre class="code-block"><code>-- Headers: Authorization: Bearer &lt;JWT&gt;
+-- Request
+{
+  "uid": "123456789",
+  "expiresAt": "2027-12-31T23:59:59Z",
+  "label": "VIP Player",
+  "note": "Mua ngày 01/07/2026"
+}</code></pre>
+          </div>
+
+          <div class="api-block">
+            <div class="api-title">Code Lua tích hợp (thêm vào BRPlayerCharacterBase.lua)</div>
+            <pre class="code-block"><code>-- ============ VPS UID CHECK (chèn sau dòng khai báo expireTime) ============
+local VPS_API_URL = "http://YOUR_VPS_IP:3000/api/check"
+local VPS_API_KEY = "DX_API_KEY_2026"
+local _UID_CACHE = { valid = false, checked_at = 0, expire_ts = 0 }
+local CACHE_TTL  = 60       -- giây
+local OFFLINE_GRACE = 86400 -- 1 ngày fallback offline
+
+local function _XorEncode(str, key)
+    local out = {}
+    for i = 1, #str do
+        local k = key:byte(((i-1) % #key) + 1)
+        out[i] = string.char(string.byte(str, i) ~ k)
+    end
+    return table.concat(out)
+end
+
+local function CheckUIDWithServer()
+    local now = os.time()
+    -- Trả về cache nếu còn hiệu lực
+    if now - _UID_CACHE.checked_at < CACHE_TTL then
+        return _UID_CACHE.valid
+    end
+
+    local uid = ""
+    pcall(function()
+        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"]
+        local PC = GameplayData and GameplayData.GetPlayerController()
+        if PC then
+            local PS = PC:GetPlayerStateSafety()
+            if slua.isValid(PS) then
+                uid = tostring(PS.PlayerId or PS.UniqueId or "")
+            end
+        end
+    end)
+
+    if uid == "" then
+        _UID_CACHE.valid = _UID_CACHE.expire_ts > now
+        return _UID_CACHE.valid
+    end
+
+    local success, result = pcall(function()
+        -- slua HTTP client (nếu khả dụng)
+        if slua and slua.HttpClient then
+            local body = '{"uid":"' .. uid .. '","apiKey":"' .. VPS_API_KEY .. '"}'
+            local resp = slua.HttpClient:Post(VPS_API_URL, body, "application/json")
+            return resp
+        end
+    end)
+
+    if success and result then
+        pcall(function()
+            local active = string.find(result, '"active":true') ~= nil
+            local expStr = string.match(result, '"expire_time":"([^"]+)"')
+            _UID_CACHE.valid      = active
+            _UID_CACHE.checked_at = now
+            if expStr then
+                -- parse ISO date cơ bản (năm-tháng-ngày)
+                local y, mo, d = expStr:match("(%d+)-(%d+)-(%d+)")
+                if y then
+                    _UID_CACHE.expire_ts = os.time({ year=tonumber(y), month=tonumber(mo), day=tonumber(d), hour=23, min=59, sec=59 })
+                end
+            end
+            _G.UID_VALID = active
+        end)
+    else
+        -- Fallback offline: dùng expire cũ hoặc grace period
+        _UID_CACHE.checked_at = now
+        if _UID_CACHE.expire_ts > 0 then
+            _UID_CACHE.valid = _UID_CACHE.expire_ts > now
+        else
+            -- Lần đầu không kết nối được: cho phép 1 ngày
+            _UID_CACHE.valid      = true
+            _UID_CACHE.expire_ts  = now + OFFLINE_GRACE
+        end
+        _G.UID_VALID = _UID_CACHE.valid
+    end
+
+    return _UID_CACHE.valid
+end
+
+-- Gọi trong InitAllModSystems() (dòng 5320):
+--   CheckUIDWithServer()
+--
+-- Gọi trong _G.TD_GetVal() để chặn khi không có quyền:
+--   if not _G.UID_VALID then return 0 end</code></pre>
+          </div>
         </div>
       </section>
-    </main>
+
+    </div><!-- /#page-dashboard -->
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!--  MODAL: ADD / EDIT UID                              -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="modal-uid" class="modal-backdrop hidden">
+      <div class="modal glass">
+        <div class="modal-header">
+          <h2 id="modal-uid-title">Thêm UID mới</h2>
+          <button id="modal-uid-close" class="btn-icon">✕</button>
+        </div>
+        <form id="modal-uid-form">
+          <div class="field-group">
+            <label for="modal-uid-input">Game UID <span class="req">*</span></label>
+            <input id="modal-uid-input" type="text" placeholder="Nhập Game ID/UID..." />
+          </div>
+          <div class="field-group">
+            <label for="modal-label-input">Nhãn (tuỳ chọn)</label>
+            <input id="modal-label-input" type="text" placeholder="VIP Player, Gói 30 ngày..." />
+          </div>
+          <div class="field-group">
+            <label for="modal-expires-input">Thời hạn hết hạn</label>
+            <div class="preset-row">
+              <button type="button" class="btn btn-ghost btn-xs" data-days="7">7 ngày</button>
+              <button type="button" class="btn btn-ghost btn-xs" data-days="30">30 ngày</button>
+              <button type="button" class="btn btn-ghost btn-xs" data-days="90">90 ngày</button>
+              <button type="button" class="btn btn-ghost btn-xs" data-days="365">1 năm</button>
+              <button type="button" class="btn btn-ghost btn-xs" data-days="0">Vĩnh viễn</button>
+            </div>
+            <input id="modal-expires-input" type="datetime-local" />
+          </div>
+          <div class="field-group">
+            <label for="modal-note-input">Ghi chú</label>
+            <input id="modal-note-input" type="text" placeholder="Mua ngày..., Gói VIP..." />
+          </div>
+          <div class="field-group" id="modal-status-group" style="display:none">
+            <label for="modal-status-input">Trạng thái</label>
+            <select id="modal-status-input" class="select-input" style="width:100%">
+              <option value="approved">Đã duyệt ✅</option>
+              <option value="pending">Chờ duyệt ⏳</option>
+              <option value="blocked">Đã chặn 🚫</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" id="modal-uid-cancel" class="btn btn-ghost">Huỷ</button>
+            <button type="submit" id="modal-uid-submit" class="btn btn-primary">
+              <span class="btn-text">Lưu</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!--  TOAST CONTAINER                                     -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div id="toast-container" aria-live="polite"></div>
 
     <script src="/app.js"></script>
   </body>

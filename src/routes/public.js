@@ -1,5 +1,7 @@
 import express from "express";
-import { store } from "../db.js";
+import { rateLimit } from "express-rate-limit";
+import { store, isDeviceActive } from "../db.js";
+import { requireApiKey } from "../middleware.js";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -7,14 +9,28 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Khóa XOR bí mật (trùng khớp với khóa trong game stub)
+// XOR key must match the key used in game stub
 const XOR_KEY = "DX_SECRET_KEY_2026_@#$";
 
-// Duong dan den protected_script.lua (trong thu muc ADMIN-DXMOD)
-const SCRIPT_PATH = path.join(__dirname, "..", "protected_script.lua");
+// Path to the protected Lua script
+const SCRIPT_PATH = path.join(__dirname, "..", "..", "protected_script.lua");
 
 export const publicRouter = express.Router();
 
+// ----------------------------------------------------------------
+//  Rate limiter: 15 requests per minute per IP (configurable)
+// ----------------------------------------------------------------
+const checkLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please slow down" },
+});
+
+// ----------------------------------------------------------------
+//  HELPERS
+// ----------------------------------------------------------------
 function normalizeGameId(value) {
   return String(value || "").trim();
 }
@@ -29,18 +45,102 @@ function encryptXOR(plaintext) {
   const data = Buffer.from(plaintext, "utf8");
   const key = Buffer.from(XOR_KEY, "utf8");
   const result = Buffer.alloc(data.length);
-  
   for (let i = 0; i < data.length; i++) {
     result[i] = data[i] ^ key[i % key.length];
   }
-  
-  // Tra ve chuoi hex de truyen tai an toan qua HTTP thong thuong
   return result.toString("hex");
 }
 
+function getClientIp(req) {
+  return (
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
+}
+
 // ================================================================
-// ENDPOINT: POST /api/load-script
-// Phuc vu noi dung protected_script.lua cho game client co ban quyen
+//  ENDPOINT: POST /api/check
+//  Game client calls this with { uid, apiKey }
+//  Returns { status, active, expire_time, message }
+// ================================================================
+publicRouter.post("/check", checkLimiter, requireApiKey, (req, res) => {
+  const uid = normalizeGameId(req.body.uid || req.body.gameId);
+
+  if (!uid) {
+    return res.status(400).json({
+      status: "error",
+      active: false,
+      expire_time: null,
+      message: "uid is required",
+    });
+  }
+
+  const ip = getClientIp(req);
+  let row = store.findByGameId(uid);
+
+  // Auto-register if not found (status = pending, NOT approved)
+  if (!row) {
+    row = store.registerDevice(uid, null);
+  } else {
+    store.touchDevice(uid);
+  }
+
+  const active = isActive(row);
+  store.addLog(uid, ip, active, "check");
+
+  if (!active) {
+    const reason =
+      row.status === "blocked"
+        ? "UID đã bị chặn / UID is blocked"
+        : row.status === "pending"
+        ? "UID chưa được kích hoạt / UID pending activation"
+        : "Giấy phép đã hết hạn / License expired";
+
+    return res.json({
+      status: "error",
+      active: false,
+      expire_time: row.expires_at || null,
+      message: reason,
+    });
+  }
+
+  return res.json({
+    status: "success",
+    active: true,
+    expire_time: row.expires_at || null,
+    message: "Kích hoạt thành công / Activated",
+  });
+});
+
+// ================================================================
+//  ENDPOINT: GET /api/check (convenience — same logic, GET variant)
+// ================================================================
+publicRouter.get("/check", checkLimiter, (req, res) => {
+  const uid = normalizeGameId(req.query.uid || req.query.gameId);
+
+  if (!uid) {
+    return res.status(400).json({ status: "error", active: false, message: "uid required" });
+  }
+
+  const ip = getClientIp(req);
+  let row = store.findByGameId(uid);
+  if (!row) row = store.registerDevice(uid, null);
+  else store.touchDevice(uid);
+
+  const active = isActive(row);
+  store.addLog(uid, ip, active, "check-get");
+
+  return res.json({
+    status: active ? "success" : "error",
+    active,
+    expire_time: row.expires_at || null,
+    message: active ? "Activated" : "Not activated",
+  });
+});
+
+// ================================================================
+//  ENDPOINT: POST /api/load-script  (serve XOR-encrypted Lua)
 // ================================================================
 publicRouter.post("/load-script", (req, res) => {
   const gameId = normalizeGameId(req.body.gameId || req.headers["x-game-id"]);
@@ -49,21 +149,18 @@ publicRouter.post("/load-script", (req, res) => {
     return res.status(400).json({ error: "gameId is required" });
   }
 
-  // Tìm thông tin người chơi trong Database
   let device = store.findByGameId(gameId);
-
-  // Nếu chưa tồn tại hoặc chưa approved, tự động duyệt (Auto-Approve để test)
   if (!device) {
     device = store.registerDevice(gameId, "Auto Registered & Approved via Game");
   }
-  
+
   if (device.status !== "approved") {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     device = store.updateDevice(device.id, {
       status: "approved",
       expiresAt: thirtyDaysFromNow.toISOString(),
-      note: "Auto Approved for Testing"
+      note: "Auto Approved for Testing",
     });
   }
 
@@ -71,21 +168,20 @@ publicRouter.post("/load-script", (req, res) => {
     return res.status(404).json({ error: "Script not found on server" });
   }
 
-  // Cập nhật thời gian tương tác cuối
   store.touchDevice(gameId);
 
   fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
-    if (err) {
-      return res.status(500).json({ error: "Failed to read script" });
-    }
-    
+    if (err) return res.status(500).json({ error: "Failed to read script" });
+    const encryptedData = encryptXOR(data);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-store");
-    res.end(data);
+    res.end(encryptedData);
   });
 });
 
-// ENDPOINT: GET /api/load-script (Hỗ trợ truyền gameId qua query param để test)
+// ================================================================
+//  ENDPOINT: GET /api/load-script  (query param variant)
+// ================================================================
 publicRouter.get("/load-script", (req, res) => {
   const gameId = normalizeGameId(req.query.gameId);
 
@@ -94,8 +190,6 @@ publicRouter.get("/load-script", (req, res) => {
   }
 
   let device = store.findByGameId(gameId);
-
-  // Nếu chưa tồn tại hoặc chưa approved, tự động duyệt (Auto-Approve để test)
   if (!device) {
     device = store.registerDevice(gameId, "Auto Registered & Approved via Game");
   }
@@ -106,7 +200,7 @@ publicRouter.get("/load-script", (req, res) => {
     device = store.updateDevice(device.id, {
       status: "approved",
       expiresAt: thirtyDaysFromNow.toISOString(),
-      note: "Auto Approved for Testing"
+      note: "Auto Approved for Testing",
     });
   }
 
@@ -117,17 +211,17 @@ publicRouter.get("/load-script", (req, res) => {
   store.touchDevice(gameId);
 
   fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
-    if (err) {
-      return res.status(500).json({ error: "Failed to read script" });
-    }
-    
+    if (err) return res.status(500).json({ error: "Failed to read script" });
+    const encryptedData = encryptXOR(data);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-store");
-    res.end(data);
+    res.end(encryptedData);
   });
 });
 
-
+// ================================================================
+//  ENDPOINT: POST /api/devices/register  (legacy)
+// ================================================================
 publicRouter.post("/devices/register", (req, res) => {
   const gameId = normalizeGameId(req.body.gameId);
   const label = String(req.body.label || "").trim() || null;
@@ -142,10 +236,13 @@ publicRouter.post("/devices/register", (req, res) => {
     gameId,
     status: row.status,
     active: isActive(row),
-    expiresAt: row.expires_at
+    expiresAt: row.expires_at,
   });
 });
 
+// ================================================================
+//  ENDPOINT: GET /api/licenses/check  (legacy)
+// ================================================================
 publicRouter.get("/licenses/check", (req, res) => {
   const gameId = normalizeGameId(req.query.gameId);
 
@@ -154,7 +251,6 @@ publicRouter.get("/licenses/check", (req, res) => {
   }
 
   const existing = store.findByGameId(gameId);
-
   if (!existing) {
     return res.json({ gameId, status: "unknown", active: false, expiresAt: null });
   }
@@ -165,8 +261,6 @@ publicRouter.get("/licenses/check", (req, res) => {
     gameId,
     status: row.status,
     active: isActive(row),
-    expiresAt: row.expires_at
+    expiresAt: row.expires_at,
   });
 });
-
-// END OF FILE
