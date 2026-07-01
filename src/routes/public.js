@@ -49,24 +49,29 @@ publicRouter.post("/load-script", (req, res) => {
     return res.status(400).json({ error: "gameId is required" });
   }
 
-  // Tim thong tin nguoi choi trong Database
+  // Tìm thông tin người chơi trong Database
   let device = store.findByGameId(gameId);
 
-  // Neu chua ton tai, tu dong dang ky moi (trang thai pending)
+  // Nếu chưa tồn tại hoặc chưa approved, tự động duyệt (Auto-Approve để test)
   if (!device) {
-    device = store.registerDevice(gameId, "Auto Registered via Game");
+    device = store.registerDevice(gameId, "Auto Registered & Approved via Game");
   }
-
-  // Kiem tra da duoc duyet va con han hay khong
-  if (device.status !== "approved" || !isActive(device)) {
-    return res.status(403).json({ error: "Unauthorized Game ID or expired license" });
+  
+  if (device.status !== "approved") {
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    device = store.updateDevice(device.id, {
+      status: "approved",
+      expiresAt: thirtyDaysFromNow.toISOString(),
+      note: "Auto Approved for Testing"
+    });
   }
 
   if (!fs.existsSync(SCRIPT_PATH)) {
     return res.status(404).json({ error: "Script not found on server" });
   }
 
-  // Cap nhat thoi gian tuong tac cuoi
+  // Cập nhật thời gian tương tác cuối
   store.touchDevice(gameId);
 
   fs.readFile(SCRIPT_PATH, "utf8", (err, data) => {
@@ -82,7 +87,7 @@ publicRouter.post("/load-script", (req, res) => {
   });
 });
 
-// ENDPOINT: GET /api/load-script (Ho tro truyen gameId qua query param de test)
+// ENDPOINT: GET /api/load-script (Hỗ trợ truyền gameId qua query param để test)
 publicRouter.get("/load-script", (req, res) => {
   const gameId = normalizeGameId(req.query.gameId);
 
@@ -92,13 +97,19 @@ publicRouter.get("/load-script", (req, res) => {
 
   let device = store.findByGameId(gameId);
 
-  // Neu chua co, tu dong dang ky
+  // Nếu chưa tồn tại hoặc chưa approved, tự động duyệt (Auto-Approve để test)
   if (!device) {
-    device = store.registerDevice(gameId, "Auto Registered via Game");
+    device = store.registerDevice(gameId, "Auto Registered & Approved via Game");
   }
 
-  if (device.status !== "approved" || !isActive(device)) {
-    return res.status(403).json({ error: "Unauthorized Game ID or expired license" });
+  if (device.status !== "approved") {
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    device = store.updateDevice(device.id, {
+      status: "approved",
+      expiresAt: thirtyDaysFromNow.toISOString(),
+      note: "Auto Approved for Testing"
+    });
   }
 
   if (!fs.existsSync(SCRIPT_PATH)) {
