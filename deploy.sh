@@ -1,66 +1,89 @@
 #!/bin/bash
 # =============================================================
-#  DXMOD VPS DEPLOY SCRIPT
-#  Chạy script này trên VPS sau khi SSH vào:
-#  ssh root@160.250.246.119
-#  bash <(curl -s https://raw.githubusercontent.com/DeerXua/ADMIN-DXMOD/main/deploy.sh)
+#  DXMOD VPS Deploy Script — SAFE MODE
+#  - Chỉ cài vào /opt/dxmod (thư mục riêng biệt)
+#  - KHÔNG đụng tới bất kỳ project/process nào đang chạy
+#  - KHÔNG dùng pm2 delete/stop/kill trên process khác
+#  - KHÔNG thay đổi firewall rules hiện có
+#  - Chạy DXMOD trên port 4000 (tránh xung đột)
 # =============================================================
 
 set -e
+
 VPS_DIR="/opt/dxmod"
 REPO="https://github.com/DeerXua/ADMIN-DXMOD.git"
-SERVICE="dxmod"
+SERVICE="dxmod"            # PM2 app name riêng biệt
+DXMOD_PORT=4000            # Port riêng - KHÔNG xung đột
 
-echo "=============================="
-echo "  DXMOD VPS Deploy Script"
-echo "=============================="
+echo ""
+echo "╔══════════════════════════════════════╗"
+echo "║      DXMOD VPS Deploy — SAFE MODE    ║"
+echo "╚══════════════════════════════════════╝"
+echo ""
+echo "⚠️  Chỉ cài vào: $VPS_DIR"
+echo "⚠️  Port sử dụng: $DXMOD_PORT"
+echo "⚠️  KHÔNG đụng tới project/process khác"
+echo ""
 
-# 1. Cài Node.js 20 nếu chưa có
+# ---- Kiểm tra xem port 4000 có đang bị chiếm không ----
+if ss -tlnp 2>/dev/null | grep -q ":${DXMOD_PORT}" || netstat -tlnp 2>/dev/null | grep -q ":${DXMOD_PORT}"; then
+    echo "⚠️  WARNING: Port $DXMOD_PORT đang được dùng bởi process khác."
+    echo "   Nếu đó là lần chạy trước của DXMOD, pm2 restart sẽ xử lý."
+    echo "   Nếu là project khác → sửa DXMOD_PORT ở đầu script."
+fi
+
+# 1. Cài Node.js 20 (chỉ nếu chưa có — KHÔNG ghi đè version hiện tại nếu đã đủ)
+echo "[1/6] Checking Node.js..."
 if ! command -v node &>/dev/null; then
-    echo "[1/6] Installing Node.js 20..."
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt-get install -y nodejs
+    echo "  → Node.js chưa có, cài Node.js 20..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null 2>&1
+    apt-get install -y nodejs >/dev/null 2>&1
+    echo "  ✓ Node.js $(node --version) installed"
 else
-    echo "[1/6] Node.js $(node --version) already installed ✓"
+    echo "  ✓ Node.js $(node --version) already installed (giữ nguyên)"
 fi
 
-# 2. Cài git nếu chưa có
+# 2. Cài git (chỉ nếu chưa có)
+echo "[2/6] Checking git..."
 if ! command -v git &>/dev/null; then
-    echo "[2/6] Installing git..."
-    apt-get install -y git
+    echo "  → Cài git..."
+    apt-get install -y git >/dev/null 2>&1
 else
-    echo "[2/6] git $(git --version) already installed ✓"
+    echo "  ✓ git $(git --version | head -1) already installed (giữ nguyên)"
 fi
 
-# 3. Cài PM2 nếu chưa có
+# 3. Cài PM2 (chỉ nếu chưa có — KHÔNG reset pm2 hiện tại)
+echo "[3/6] Checking PM2..."
 if ! command -v pm2 &>/dev/null; then
-    echo "[3/6] Installing PM2..."
-    npm install -g pm2
+    echo "  → Cài PM2..."
+    npm install -g pm2 >/dev/null 2>&1
+    echo "  ✓ PM2 installed"
 else
-    echo "[3/6] PM2 $(pm2 --version) already installed ✓"
+    echo "  ✓ PM2 $(pm2 --version) already installed (giữ nguyên)"
 fi
 
-# 4. Clone hoặc pull repo
-echo "[4/6] Deploying code..."
+# 4. Clone hoặc pull chỉ repo DXMOD vào /opt/dxmod
+echo "[4/6] Deploying DXMOD code..."
 if [ -d "$VPS_DIR/.git" ]; then
     cd "$VPS_DIR"
+    # Chỉ pull repo DXMOD — không ảnh hưởng gì khác
     git pull origin main
-    echo "  → Code updated via git pull"
+    echo "  ✓ Code updated via git pull"
 else
     mkdir -p "$VPS_DIR"
     git clone "$REPO" "$VPS_DIR"
-    echo "  → Code cloned fresh"
+    echo "  ✓ Code cloned to $VPS_DIR"
 fi
 
 cd "$VPS_DIR"
 
-# 5. Tạo .env nếu chưa có
+# 5. Tạo .env cho DXMOD (chỉ nếu chưa có — không ghi đè file đã tồn tại)
+echo "[5/6] Checking .env..."
 if [ ! -f "$VPS_DIR/.env" ]; then
-    echo "[5/6] Creating .env file..."
-    cat > "$VPS_DIR/.env" << 'ENVEOF'
-PORT=3000
+    cat > "$VPS_DIR/.env" << ENVEOF
+PORT=${DXMOD_PORT}
 ADMIN_TOKEN="LeThienNhan2006@#"
-JWT_SECRET="DX_JWT_SECRET_VERY_LONG_2026_@#$%"
+JWT_SECRET="DX_JWT_SECRET_VERY_LONG_2026_@#\$%"
 API_KEY="DX_API_KEY_2026"
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="LeThienNhan2006@#"
@@ -68,42 +91,54 @@ DB_PATH="./data/app.json"
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=15
 ENVEOF
-    echo "  → .env created (chỉnh sửa lại nếu cần)"
+    echo "  ✓ .env created (port $DXMOD_PORT)"
 else
-    echo "[5/6] .env already exists, keeping it ✓"
+    echo "  ✓ .env already exists — KHÔNG ghi đè (giữ nguyên cấu hình)"
+    echo "  ℹ  Nếu muốn đổi port: nano $VPS_DIR/.env"
 fi
 
-# 6. Cài npm packages
-echo "[6/6] Installing npm packages..."
-npm install --omit=dev
-
-# 7. Tạo data dir
+# 6. Cài npm packages (chỉ production)
+echo "[6/6] npm install..."
 mkdir -p "$VPS_DIR/data"
+npm install --omit=dev --silent
+echo "  ✓ Dependencies installed"
 
-# 8. Khởi động / restart với PM2
+# 7. Start/restart CHỈ PM2 app "dxmod" — KHÔNG đụng process khác
 echo ""
-echo "[PM2] Starting/restarting service..."
-pm2 describe "$SERVICE" &>/dev/null && pm2 restart "$SERVICE" || pm2 start src/server.js --name "$SERVICE" --cwd "$VPS_DIR"
+echo "[PM2] Managing DXMOD service only..."
+
+if pm2 describe "$SERVICE" &>/dev/null 2>&1; then
+    echo "  → Restarting existing '$SERVICE' process..."
+    pm2 restart "$SERVICE"
+else
+    echo "  → Starting new '$SERVICE' process..."
+    pm2 start src/server.js \
+        --name "$SERVICE" \
+        --cwd "$VPS_DIR" \
+        --no-autorestart false \
+        -- 2>/dev/null
+fi
+
+# Lưu PM2 process list (bao gồm cả processes khác đang có)
 pm2 save
 
-# 9. Setup PM2 startup (chạy khi reboot)
-pm2 startup 2>/dev/null | tail -1 | bash 2>/dev/null || true
+# Đảm bảo PM2 chạy khi reboot (chỉ setup startup nếu chưa có)
+if [ ! -f /etc/systemd/system/pm2-root.service ]; then
+    echo "  → Setup PM2 startup on boot..."
+    pm2 startup systemd -u root --hp /root 2>/dev/null | grep "^sudo\|^systemctl" | bash 2>/dev/null || true
+fi
 
-# 10. Firewall
-echo "[UFW] Allowing port 3000..."
-ufw allow 3000/tcp 2>/dev/null || true
-ufw allow 80/tcp   2>/dev/null || true
-ufw allow 22/tcp   2>/dev/null || true
-
-# Done
 echo ""
-echo "=============================="
-echo "  ✅ DEPLOY COMPLETE!"
-echo "=============================="
-echo "  URL:    http://160.250.246.119:3000"
-echo "  Admin:  http://160.250.246.119:3000/"
-echo "  Health: http://160.250.246.119:3000/health"
+echo "╔══════════════════════════════════════════╗"
+echo "║         ✅  DEPLOY COMPLETE!             ║"
+echo "╠══════════════════════════════════════════╣"
+echo "║  DXMOD Admin: http://160.250.246.119:${DXMOD_PORT}  ║"
+echo "║  API Check:   POST /api/check            ║"
+echo "║  Health:      GET  /health               ║"
+echo "╠══════════════════════════════════════════╣"
+echo "║  pm2 status          → xem tất cả apps  ║"
+echo "║  pm2 logs $SERVICE   → xem log DXMOD    ║"
+echo "╚══════════════════════════════════════════╝"
 echo ""
-echo "  PM2 logs: pm2 logs $SERVICE"
-echo "  PM2 status: pm2 status"
-echo "=============================="
+echo "Các app PM2 đang chạy:"
+pm2 list

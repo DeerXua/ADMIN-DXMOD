@@ -1,46 +1,60 @@
-# ADMIN-DXMOD (Máy chủ quản trị cấp phép & tải code từ xa)
+# ADMIN-DXMOD — VPS License Control Panel
 
-Dự án này là máy chủ quản lý thiết bị (`machineId`) và cấp phát mã nguồn bảo mật (`protected_script.lua`) từ xa cho game client.
+Hệ thống quản lý giấy phép VIP theo UID cho game PUBG Mobile.
 
-## 🚀 Hướng dẫn cài đặt nhanh trên VPS
+## Tính năng
+- 🔐 Đăng nhập admin bằng JWT
+- ✅ API kiểm tra UID (`POST /api/check`)
+- 👥 Quản lý UID: thêm, sửa, xoá, phân trang, tìm kiếm
+- 📋 Access log realtime
+- 🔌 Tab API Info + code Lua mẫu
+- 🛡️ Rate limiting chống spam
 
-### 1. Cấu hình môi trường (`.env`)
-Tạo file `.env` tại thư mục gốc của dự án:
+## Deploy lên VPS
+
+> ⚠️ Script này **KHÔNG đụng tới** project đang chạy trên VPS.  
+> DXMOD chạy trên **port 4000** để tránh xung đột.
+
+```bash
+# SSH vào VPS
+ssh root@YOUR_VPS_IP
+
+# Chạy 1 lệnh deploy hoàn toàn tự động
+curl -fsSL https://raw.githubusercontent.com/DeerXua/ADMIN-DXMOD/main/deploy.sh | bash
+```
+
+Sau khi chạy xong:
+- **Admin Panel**: `http://YOUR_VPS_IP:4000/`
+- **API Check**: `POST http://YOUR_VPS_IP:4000/api/check`
+
+## Cấu hình `.env`
+
 ```env
-PORT=8080
-ADMIN_TOKEN=nhap_key_bi_mat_cua_ban_tai_day
-DB_PATH=./data/app.json
+PORT=4000
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="your_password"
+JWT_SECRET="your_jwt_secret"
+API_KEY="DX_API_KEY_2026"
 ```
 
-### 2. Cài đặt và khởi chạy với PM2
-```bash
-# Di chuyển vào thư mục dự án
-cd /root/ADMIN-DXMOD
+## API Endpoints
 
-# Cài đặt thư viện dependencies
-npm install --omit=dev
+| Method | Path | Mô tả |
+|--------|------|-------|
+| GET | `/health` | Health check |
+| POST | `/api/check` | Kiểm tra UID (từ Lua) |
+| POST | `/api/admin/login` | Đăng nhập → JWT |
+| GET | `/api/admin/users` | Danh sách UID |
+| POST | `/api/admin/users` | Thêm UID |
+| PUT | `/api/admin/users/:uid` | Cập nhật UID |
+| DELETE | `/api/admin/users/:uid` | Xoá UID |
+| GET | `/api/admin/logs` | Access logs |
 
-# Tạo thư mục lưu trữ data thiết bị
-mkdir -p data
+## Tích hợp Lua
 
-# Đưa protected_script.lua vào thư mục gốc của dự án
-# (Bản script này sẽ được mã hóa XOR tự động khi truyền về game client)
+Trong `BRPlayerCharacterBase.lua`, thay `YOUR_VPS_IP` bằng IP thật:
 
-# Khởi chạy bằng PM2
-pm2 start src/server.js --name admin-dxmod
-pm2 save
+```lua
+local VPS_API_URL = "http://YOUR_VPS_IP:4000/api/check"
+local VPS_API_KEY = "DX_API_KEY_2026"
 ```
-
-### 3. Cách lấy script test từ cổng 8080
-Nếu bạn muốn thử nghiệm việc xác thực qua API, sử dụng lệnh `curl` đính kèm ID thiết bị:
-```bash
-# Đăng ký thiết bị (trạng thái pending)
-curl -X POST -H "Content-Type: application/json" -d '{"machineId":"TEST_DEVICE_01","label":"May Test 1"}' http://localhost:8080/api/devices/register
-
-# Lấy script đã mã hóa (Chỉ thành công khi thiết bị đã được duyệt "approved" trong data/app.json)
-curl "http://localhost:8080/api/load-script?machineId=TEST_DEVICE_01"
-```
-
-## 🔒 Cơ chế bảo mật
-*   **Mã hóa XOR**: Tự động mã hóa tệp tin `protected_script.lua` thành mã Hex-XOR trước khi truyền đi để ngăn chặn hành vi bắt gói tin (Sniffing) qua HTTP.
-*   **Xác thực thiết bị**: Chỉ các thiết bị có `machineId` được Admin duyệt (`approved`) mới được phép tải về mã nguồn của Mod.
