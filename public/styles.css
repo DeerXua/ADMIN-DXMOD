@@ -125,7 +125,7 @@ body::before {
 .login-logo h1 {
   font-size: 28px; font-weight: 900; letter-spacing: -1px;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
 .login-logo p { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
 
@@ -159,7 +159,7 @@ body::before {
 .brand-title  {
   font-size: 18px; font-weight: 900; letter-spacing: -0.5px;
   background: linear-gradient(135deg, var(--accent), var(--accent2));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
   line-height: 1.1;
 }
 .brand-sub { font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; }
@@ -372,7 +372,7 @@ tbody tr:hover td { background: rgba(56,189,248,0.03); }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
 .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-.modal-header h2 { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.modal-header h2 { font-size: 18px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
 /* ──────────────── TOAST ──────────────── */
@@ -404,7 +404,7 @@ tbody tr:hover td { background: rgba(56,189,248,0.03); }
 
 /* ──────────────── API INFO ──────────────── */
 .api-info-panel { padding: 28px; }
-.api-info-panel h2 { font-size: 18px; font-weight: 800; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.api-info-panel h2 { font-size: 18px; font-weight: 800; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .api-block { margin-bottom: 28px; }
 .api-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
 .api-title code { font-family: var(--font-mono); color: var(--accent); }
