@@ -12,10 +12,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set("trust proxy", true); // Bật trust proxy cho Nginx/Localtunnel/Cloudflare
 
 // Security headers (CSP disabled for our simple frontend)
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
+
+// Middleware xử lý lỗi JSON format để tránh crash do client gửi payload hỏng
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ status: "error", message: "Invalid JSON payload" });
+  }
+  next(err);
+});
+
 app.use(express.json({ limit: "64kb" }));
 
 // Global rate limit (generous — per-endpoint limits are stricter)
