@@ -29,11 +29,11 @@ Write-Host "  ✅ Clone/pull code từ GitHub"
 Write-Host "  ✅ Tạo .env với cấu hình mặc định"
 Write-Host "  ✅ npm install"
 Write-Host "  ✅ Chạy server với PM2 (auto-restart)"
-Write-Host "  ✅ Mở port 3000 trên firewall"
+Write-Host "  ✅ Mở port 5000 trên firewall"
 Write-Host ""
 Write-Host "Kết quả:" -ForegroundColor Yellow
-Write-Host "  🌐 http://160.250.246.119:3000  (Admin Panel)"
-Write-Host "  🔗 http://160.250.246.119:3000/api/check  (API)"
+Write-Host "  🌐 http://160.250.246.119:5000  (Admin Panel)"
+Write-Host "  🔗 http://160.250.246.119:5000/api/check  (API)"
 Write-Host ""
 
 # Tự động copy lệnh vào clipboard
