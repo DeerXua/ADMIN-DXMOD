@@ -191,15 +191,10 @@ export const store = {
   addLog(uid, ip, status, method) {
     const state = readState();
 
-    // Chống spam: không lưu log mới nếu cùng trạng thái và chưa quá 5 phút
+    // Chống spam: Chỉ lưu log mới khi trạng thái thay đổi (ví dụ: pending -> approved, approved -> blocked...)
     const lastLog = state.logs.find(l => l.uid === uid);
-    if (lastLog) {
-      const lastTime = new Date(lastLog.timestamp);
-      const now = new Date();
-      const diffMins = (now - lastTime) / 1000 / 60;
-      if (lastLog.status === status && diffMins < 5) {
-        return; // Bỏ qua ghi log trùng lặp
-      }
+    if (lastLog && lastLog.status === status) {
+      return; // Không có thay đổi trạng thái, bỏ qua ghi log mới
     }
 
     state.logs.unshift({
