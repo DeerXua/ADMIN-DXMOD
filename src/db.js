@@ -187,9 +187,21 @@ export const store = {
   },
 
   // ---- ACCESS LOGS ----
-  /** Record every /api/check call */
+  /** Record every /api/check call with debouncer */
   addLog(uid, ip, status, method) {
     const state = readState();
+
+    // Chống spam: không lưu log mới nếu cùng trạng thái và chưa quá 5 phút
+    const lastLog = state.logs.find(l => l.uid === uid);
+    if (lastLog) {
+      const lastTime = new Date(lastLog.timestamp);
+      const now = new Date();
+      const diffMins = (now - lastTime) / 1000 / 60;
+      if (lastLog.status === status && diffMins < 5) {
+        return; // Bỏ qua ghi log trùng lặp
+      }
+    }
+
     state.logs.unshift({
       uid,
       ip: ip || "unknown",
