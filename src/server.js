@@ -18,6 +18,8 @@ app.set("trust proxy", 1); // Tin tưởng 1 hop proxy (Nginx / Localtunnel)
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 
+app.use(express.json({ limit: "64kb" }));
+
 // Middleware xử lý lỗi JSON format để tránh crash do client gửi payload hỏng
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
@@ -25,8 +27,6 @@ app.use((err, req, res, next) => {
   }
   next(err);
 });
-
-app.use(express.json({ limit: "64kb" }));
 
 // Global rate limit (generous — per-endpoint limits are stricter)
 app.use(rateLimit({
