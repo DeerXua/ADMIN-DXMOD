@@ -105,7 +105,7 @@ try {
     const list = JSON.parse(execSync("pm2 jlist").toString());
     list.forEach(p => {
         const name = p.name;
-        if (name && name !== "bybitjobs" && name !== "dxmod") {
+        if (name && name !== "bybitjobs" && name !== "payos-webhook" && name !== "dxmod") {
             console.log(`  → Deleting old/broken process: ${name}`);
             try {
                 execSync(`pm2 delete "${name}"`);
