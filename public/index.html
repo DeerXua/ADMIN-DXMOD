@@ -239,91 +239,78 @@
 
           <div class="api-block">
             <div class="api-title">Code Lua tích hợp (thêm vào BRPlayerCharacterBase.lua)</div>
-            <pre class="code-block"><code>-- ============ VPS UID CHECK (chèn sau dòng khai báo expireTime) ============
+            <pre class="code-block"><code>-- ============ VPS UID CHECK (Tích hợp thông qua http_manager) ============
 local VPS_API_URL = "http://YOUR_VPS_IP:5000/api/check"
 local VPS_API_KEY = "DX_API_KEY_2026"
-local _UID_CACHE = { valid = false, checked_at = 0, expire_ts = 0 }
-local CACHE_TTL  = 60       -- giây
-local OFFLINE_GRACE = 86400 -- 1 ngày fallback offline
 
-local function _XorEncode(str, key)
-    local out = {}
-    for i = 1, #str do
-        local k = key:byte(((i-1) % #key) + 1)
-        out[i] = string.char(string.byte(str, i) ~ k)
-    end
-    return table.concat(out)
-end
-
-local function CheckUIDWithServer()
+function _G.DX_CheckUIDWithAdminVPS(customMethod)
     local now = os.time()
-    -- Trả về cache nếu còn hiệu lực
-    if now - _UID_CACHE.checked_at < CACHE_TTL then
-        return _UID_CACHE.valid
+    local interval = 60 -- Mặc định 60s check 1 lần nếu đã APPROVED
+    if not _G.DX_UIDStatus or _G.DX_UIDStatus.status ~= "approved" then
+        interval = 10 -- 10s check 1 lần nếu chưa APPROVED
     end
 
-    local uid = ""
-    pcall(function()
-        local GameplayData = package.loaded["GameLua.GameCore.Data.GameplayData"]
-        local PC = GameplayData and GameplayData.GetPlayerController()
-        if PC then
-            local PS = PC:GetPlayerStateSafety()
-            if slua.isValid(PS) then
-                uid = tostring(PS.PlayerId or PS.UniqueId or "")
+    -- Bỏ qua giới hạn thời gian nếu là check khi vào trận đấu (enter-match)
+    local isMatchCheck = (customMethod == "enter-match")
+    if not isMatchCheck then
+        if _G.LastDXCheckTime and (now - _G.LastDXCheckTime) < interval then
+            return
+        end
+        _G.LastDXCheckTime = now
+    end
+
+    local uid = _G.DX_GetLocalGameUID()
+    if not uid or uid == "" then return end
+
+    local ModuleManager = package.loaded["client.module_framework.ModuleManager"] or require("client.module_framework.ModuleManager")
+    if not ModuleManager then return end
+
+    local http_manager = ModuleManager.GetModule(ModuleManager.CommonModuleConfig.http_manager)
+    if not http_manager then return end
+
+    local post_header = { ["Content-Type"] = "application/json" }
+    local reqMethod = customMethod or "check"
+    local post_content = string.format('{"uid":"%s","apiKey":"%s","method":"%s"}', uid, VPS_API_KEY, reqMethod)
+
+    local function onResponse(success, data)
+        if success and data and #data > 0 then
+            -- Ghi đè bộ nhớ đệm
+            local f = io.open("/sdcard/Android/data/com.vng.pubgmobile/files/dx_uid_resp.txt", "w")
+            if f then f:write(data) f:close() end
+
+            -- Xử lý phân tích kết quả trả về
+            local resLower = string.lower(data)
+            local active = (string.find(resLower, '"active":true', 1, true) ~= nil or 
+                            string.find(resLower, '"status":"success"', 1, true) ~= nil) and
+                            string.find(resLower, '"active":false', 1, true) == nil
+            
+            local expire_time = string.match(data, '"expire_time":"([^"]+)"')
+            local prevActive = _G.DX_UIDStatus and _G.DX_UIDStatus.active
+            
+            _G.DX_UIDStatus = {
+                active = active,
+                status = active and "approved" or "pending",
+                expire_time = expire_time,
+                message = active and "Đã kích hoạt VIP" or "Chờ Admin Duyệt UID"
+            }
+
+            -- Nếu trạng thái active thay đổi, làm mới Menu UI ngay lập tức!
+            if prevActive ~= active then
+                _G.LastVIPApprovalState = nil
+                if _G.InitModMenuTab then _G.InitModMenuTab() end
+                if _G.ResetWallColorCache then _G.ResetWallColorCache() end
             end
         end
-    end)
-
-    if uid == "" then
-        _UID_CACHE.valid = _UID_CACHE.expire_ts > now
-        return _UID_CACHE.valid
     end
 
-    local success, result = pcall(function()
-        -- slua HTTP client (nếu khả dụng)
-        if slua and slua.HttpClient then
-            local body = '{"uid":"' .. uid .. '","apiKey":"' .. VPS_API_KEY .. '"}'
-            local resp = slua.HttpClient:Post(VPS_API_URL, body, "application/json")
-            return resp
-        end
-    end)
-
-    if success and result then
-        pcall(function()
-            local active = string.find(result, '"active":true') ~= nil
-            local expStr = string.match(result, '"expire_time":"([^"]+)"')
-            _UID_CACHE.valid      = active
-            _UID_CACHE.checked_at = now
-            if expStr then
-                -- parse ISO date cơ bản (năm-tháng-ngày)
-                local y, mo, d = expStr:match("(%d+)-(%d+)-(%d+)")
-                if y then
-                    _UID_CACHE.expire_ts = os.time({ year=tonumber(y), month=tonumber(mo), day=tonumber(d), hour=23, min=59, sec=59 })
-                end
-            end
-            _G.UID_VALID = active
-        end)
-    else
-        -- Fallback offline: dùng expire cũ hoặc grace period
-        _UID_CACHE.checked_at = now
-        if _UID_CACHE.expire_ts > 0 then
-            _UID_CACHE.valid = _UID_CACHE.expire_ts > now
-        else
-            -- Lần đầu không kết nối được: cho phép 1 ngày
-            _UID_CACHE.valid      = true
-            _UID_CACHE.expire_ts  = now + OFFLINE_GRACE
-        end
-        _G.UID_VALID = _UID_CACHE.valid
-    end
-
-    return _UID_CACHE.valid
+    http_manager:Post(VPS_API_URL, post_header, post_content, nil, onResponse)
 end
 
--- Gọi trong InitAllModSystems() (dòng 5320):
---   CheckUIDWithServer()
+-- Kích hoạt kiểm tra khi người chơi vào trận đấu (chèn vào StartAdvancedSystems):
+--   _G.DX_CheckUIDWithAdminVPS("enter-match")
 --
--- Gọi trong _G.TD_GetVal() để chặn khi không có quyền:
---   if not _G.UID_VALID then return 0 end</code></pre>
+-- Vòng lặp đếm nhịp định kỳ (chèn vào AddGameTimer trong BRPlayerCharacterBase):
+--   _G.DX_CheckUIDWithAdminVPS()</code></pre>
           </div>
         </div>
       </section>
