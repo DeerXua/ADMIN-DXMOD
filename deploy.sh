@@ -97,7 +97,29 @@ mkdir -p "$VPS_DIR/data"
 npm install --omit=dev --silent
 echo "  ✓ Dependencies installed"
 
-# 7. Start/restart CHỈ PM2 app "dxmod" — KHÔNG đụng process khác
+# 7. Xóa các process cũ bị lỗi (ngoại trừ bybitjobs và dxmod)
+echo "[PM2] Cleaning up old/broken processes..."
+node -e '
+const execSync = require("child_process").execSync;
+try {
+    const list = JSON.parse(execSync("pm2 jlist").toString());
+    list.forEach(p => {
+        const name = p.name;
+        if (name && name !== "bybitjobs" && name !== "dxmod") {
+            console.log(`  → Deleting old/broken process: ${name}`);
+            try {
+                execSync(`pm2 delete "${name}"`);
+            } catch (e) {
+                console.error(`Failed to delete ${name}:`, e.message);
+            }
+        }
+    });
+} catch (err) {
+    console.error("Failed to clean up PM2 list:", err.message);
+}
+'
+
+# 8. Start/restart CHỈ PM2 app "dxmod" — KHÔNG đụng process khác
 echo ""
 echo "[PM2] Managing DXMOD service only..."
 
