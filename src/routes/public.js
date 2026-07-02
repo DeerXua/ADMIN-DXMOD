@@ -18,11 +18,11 @@ const SCRIPT_PATH = path.join(__dirname, "..", "..", "protected_script.lua");
 export const publicRouter = express.Router();
 
 // ----------------------------------------------------------------
-//  Rate limiter: 15 requests per minute per IP (configurable)
+//  Rate limiter: 120 requests per minute per IP (generous for polling)
 // ----------------------------------------------------------------
 const checkLimiter = rateLimit({
   windowMs: 60_000,
-  max: 15,
+  max: 120,
   standardHeaders: true,
   legacyHeaders: false,
   validate: { trustProxy: false },
