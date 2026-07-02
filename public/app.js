@@ -329,15 +329,32 @@ async function loadLogs() {
       $("logs-tbody").innerHTML = `<tr><td colspan="6" class="empty-row">Chưa có nhật ký truy cập</td></tr>`;
       return;
     }
-    $("logs-tbody").innerHTML = logs.map((l, i) => `
-      <tr>
-        <td style="color:${i % 2 === 0 ? '#38bdf8' : '#818cf8'};font-family:monospace;font-size:11px">${i + 1}</td>
-        <td class="date-cell">${fmtDateShort(l.timestamp)}</td>
-        <td class="uid-cell">${l.uid}</td>
-        <td style="font-family:monospace;font-size:12px;color:#64748b">${l.ip}</td>
-        <td>${l.active ? '<span class="badge badge-log-ok">✅ OK</span>' : '<span class="badge badge-log-no">❌ Denied</span>'}</td>
-        <td style="font-size:11px;color:#4b5563;font-family:monospace">${l.method || 'check'}</td>
-      </tr>`).join("");
+    $("logs-tbody").innerHTML = logs.map((l, i) => {
+      let badgeHtml = "";
+      const status = l.status || (l.active ? "approved" : "pending");
+      
+      if (status === "approved") {
+        badgeHtml = '<span class="badge badge-log-ok">✅ APPROVED</span>';
+      } else if (status === "pending") {
+        badgeHtml = '<span class="badge badge-log-pending">⏳ PENDING</span>';
+      } else if (status === "blocked") {
+        badgeHtml = '<span class="badge badge-log-blocked">🚫 BLOCKED</span>';
+      } else if (status === "expired") {
+        badgeHtml = '<span class="badge badge-log-expired">⏰ EXPIRED</span>';
+      } else {
+        badgeHtml = '<span class="badge badge-log-no">❌ DENIED</span>';
+      }
+
+      return `
+        <tr>
+          <td style="color:${i % 2 === 0 ? '#38bdf8' : '#818cf8'};font-family:monospace;font-size:11px">${i + 1}</td>
+          <td class="date-cell">${fmtDateShort(l.timestamp)}</td>
+          <td class="uid-cell">${l.uid}</td>
+          <td style="font-family:monospace;font-size:12px;color:#64748b">${l.ip}</td>
+          <td>${badgeHtml}</td>
+          <td style="font-size:11px;color:#4b5563;font-family:monospace">${l.method || 'check'}</td>
+        </tr>`;
+    }).join("");
   } catch (err) {
     $("logs-tbody").innerHTML = `<tr><td colspan="6" class="empty-row" style="color:#f87171">❌ ${err.message}</td></tr>`;
   }

@@ -188,12 +188,12 @@ export const store = {
 
   // ---- ACCESS LOGS ----
   /** Record every /api/check call */
-  addLog(uid, ip, active, method) {
+  addLog(uid, ip, status, method) {
     const state = readState();
     state.logs.unshift({
       uid,
       ip: ip || "unknown",
-      active: !!active,
+      status: status || "pending",
       method: method || "check",
       timestamp: nowIso(),
     });

@@ -88,7 +88,23 @@ publicRouter.post("/check", checkLimiter, requireApiKey, (req, res) => {
   }
 
   const active = isActive(row);
-  store.addLog(uid, ip, active, "check");
+  
+  let logStatus = "pending";
+  if (row) {
+    if (row.status === "blocked") {
+      logStatus = "blocked";
+    } else if (row.status === "approved") {
+      if (active) {
+        logStatus = "approved";
+      } else {
+        logStatus = "expired";
+      }
+    } else {
+      logStatus = "pending";
+    }
+  }
+  
+  store.addLog(uid, ip, logStatus, "check");
 
   if (!active) {
     const reason =
@@ -130,7 +146,23 @@ publicRouter.get("/check", checkLimiter, (req, res) => {
   else store.touchDevice(uid);
 
   const active = isActive(row);
-  store.addLog(uid, ip, active, "check-get");
+  
+  let logStatus = "pending";
+  if (row) {
+    if (row.status === "blocked") {
+      logStatus = "blocked";
+    } else if (row.status === "approved") {
+      if (active) {
+        logStatus = "approved";
+      } else {
+        logStatus = "expired";
+      }
+    } else {
+      logStatus = "pending";
+    }
+  }
+
+  store.addLog(uid, ip, logStatus, "check-get");
 
   return res.json({
     status: active ? "success" : "error",
