@@ -191,10 +191,10 @@ export const store = {
   addLog(uid, ip, status, method) {
     const state = readState();
 
-    // Chống spam: Chỉ lưu log mới khi trạng thái thay đổi (ví dụ: pending -> approved, approved -> blocked...)
+    // Chống spam: Chỉ ghi log khi đổi trạng thái HOẶC khi người chơi vào trận đấu (method = "enter-match")
     const lastLog = state.logs.find(l => l.uid === uid);
-    if (lastLog && lastLog.status === status) {
-      return; // Không có thay đổi trạng thái, bỏ qua ghi log mới
+    if (lastLog && lastLog.status === status && method !== "enter-match") {
+      return; // Không có thay đổi trạng thái và không phải vào trận, bỏ qua
     }
 
     state.logs.unshift({

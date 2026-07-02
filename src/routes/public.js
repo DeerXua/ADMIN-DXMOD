@@ -104,7 +104,7 @@ publicRouter.post("/check", checkLimiter, requireApiKey, (req, res) => {
     }
   }
   
-  store.addLog(uid, ip, logStatus, "check");
+  store.addLog(uid, ip, logStatus, req.body.method || "check");
 
   if (!active) {
     const reason =
@@ -162,7 +162,7 @@ publicRouter.get("/check", checkLimiter, (req, res) => {
     }
   }
 
-  store.addLog(uid, ip, logStatus, "check-get");
+  store.addLog(uid, ip, logStatus, req.query.method || "check-get");
 
   return res.json({
     status: active ? "success" : "error",
